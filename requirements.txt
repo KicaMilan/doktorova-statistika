@@ -1,0 +1,29 @@
+# requirements.txt - lista Python biblioteka koje projekat koristi.
+#
+# Instalira se komandom:  pip install -r requirements.txt
+# (nakon sto si aktivirao .venv, vidi objasnjenje u glavnoj poruci)
+
+# FastAPI - framework koji pravi web API (prima HTTP zahteve, vraca JSON)
+fastapi==0.115.0
+
+# uvicorn - "server" koji stvarno pokrece FastAPI aplikaciju i slusa
+# na mrezi (bez njega, FastAPI kod postoji ali ga niko ne moze pozvati)
+uvicorn[standard]==0.32.0
+
+# psycopg - zvanicni PostgreSQL drajver za Python (verzija 3, novija
+# generacija). Ovo je "prevodilac" izmedju Python koda i PostgreSQL baze.
+psycopg[binary,pool]==3.2.3
+
+# jinja2 - HTML template engine. FastAPI ga koristi da "popuni"
+# .html fajlove sa stvarnim podacima (npr. tabelu lige) pre nego sto
+# ih posalje browseru - ovo je nas frontend, bez posebnog JS frameworka.
+jinja2==3.1.4
+
+# python-multipart - FastAPI-ju treba ova biblioteka da bi mogao da
+# cita podatke poslate iz obicnog HTML <form> elementa (Form() u
+# kodu). Bez nje, forma za unos meca ne moze da radi.
+python-multipart==0.0.17
+
+# pydantic-settings - cita konfiguraciju (npr. lozinku za bazu) iz
+# .env fajla umesto da je "hardkodujemo" direktno u kodu
+pydantic-settings==2.6.0

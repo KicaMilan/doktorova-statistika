@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block naslov %}Admin - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Admin - lige, sezone, timovi</h2>
+
+{% if poruka %}
+    <div class="poruka-uspeh">{{ poruka }}</div>
+{% endif %}
+{% if greska %}
+    <div class="greska">{{ greska }}</div>
+{% endif %}
+
+<!--
+    Cetiri odvojene sekcije ispod. Svaka ima SVOJU formu koja salje
+    POST na SVOJU rutu (npr. /prikaz/admin/liga), a ne na zajednicku
+    rutu - ovo drzi logiku jednostavnom (svaka ruta u main.py radi
+    tacno JEDNU stvar) umesto da pravimo jednu veliku formu sa
+    "prekidacima" koja bi bila komplikovanija za citanje i odrzavanje.
+-->
+
+<div class="kartica" id="sekcija-liga">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Nova liga</h3>
+    <form class="filter-forma" method="post" action="/prikaz/admin/liga">
+        <label>
+            Naziv
+            <input type="text" name="naziv" required>
+        </label>
+        <label>
+            Drzava <span style="opacity:0.6">(opciono)</span>
+            <input type="text" name="drzava">
+        </label>
+        <label>
+            Nivo takmicenja <span style="opacity:0.6">(opciono)</span>
+            <input type="text" name="nivo_takmicenja" placeholder="npr. 1. liga">
+        </label>
+        <button type="submit">Dodaj ligu</button>
+    </form>
+
+    {% if lige %}
+    <table style="margin-top: 16px; width: auto;">
+        <thead><tr><th>ID</th><th>Naziv</th><th>Drzava</th></tr></thead>
+        <tbody>
+            {% for liga in lige %}
+            <tr><td>{{ liga.id }}</td><td>{{ liga.naziv }}</td><td>{{ liga.drzava or "-" }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="kartica" id="sekcija-sezona">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Nova sezona</h3>
+    <form class="filter-forma" method="post" action="/prikaz/admin/sezona">
+        <label>
+            Naziv <span style="opacity:0.6">(npr. 2026/27)</span>
+            <input type="text" name="naziv" required>
+        </label>
+        <button type="submit">Dodaj sezonu</button>
+    </form>
+
+    {% if sezone %}
+    <table style="margin-top: 16px; width: auto;">
+        <thead><tr><th>ID</th><th>Naziv</th></tr></thead>
+        <tbody>
+            {% for sezona in sezone %}
+            <tr><td>{{ sezona.id }}</td><td>{{ sezona.naziv }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="kartica" id="sekcija-tim">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Novi tim</h3>
+    <form class="filter-forma" method="post" action="/prikaz/admin/tim">
+        <label>
+            Naziv
+            <input type="text" name="naziv" required>
+        </label>
+        <label>
+            Grad <span style="opacity:0.6">(opciono)</span>
+            <input type="text" name="grad">
+        </label>
+        <button type="submit">Dodaj tim</button>
+    </form>
+
+    {% if timovi %}
+    <table style="margin-top: 16px; width: auto;">
+        <thead><tr><th>ID</th><th>Naziv</th><th>Grad</th></tr></thead>
+        <tbody>
+            {% for tim in timovi %}
+            <tr><td>{{ tim.id }}</td><td>{{ tim.naziv }}</td><td>{{ tim.grad or "-" }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="kartica" id="sekcija-veza">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Poveži tim sa ligom i sezonom</h3>
+    <p style="color: var(--tekst-prigusen); font-size: 0.85rem; margin-top: -6px; margin-bottom: 14px;">
+        Tim mora biti povezan sa ligom/sezonom pre nego sto moze da se
+        izabere u formi za unos meca (dropdown na stranici "Unos meca").
+    </p>
+    <form class="filter-forma" method="post" action="/prikaz/admin/veza">
+        <label>
+            Tim
+            <select name="tim_id" required>
+                <option value="">-- izaberi --</option>
+                {% for tim in timovi %}
+                <option value="{{ tim.id }}">{{ tim.naziv }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Liga
+            <select name="liga_id" required>
+                <option value="">-- izaberi --</option>
+                {% for liga in lige %}
+                <option value="{{ liga.id }}">{{ liga.naziv }}{% if liga.drzava %} ({{ liga.drzava }}){% endif %}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Sezona
+            <select name="sezona_id" required>
+                <option value="">-- izaberi --</option>
+                {% for sezona in sezone %}
+                <option value="{{ sezona.id }}">{{ sezona.naziv }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Poveži</button>
+    </form>
+
+    {% if veze %}
+    <table style="margin-top: 16px; width: auto;">
+        <thead><tr><th>Tim</th><th>Liga</th><th>Sezona</th></tr></thead>
+        <tbody>
+            {% for veza in veze %}
+            <tr><td>{{ veza.tim }}</td><td>{{ veza.liga }}</td><td>{{ veza.sezona }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

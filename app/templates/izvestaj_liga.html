@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block naslov %}Izvestaj lige - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Izvestaj lige</h2>
+
+<div class="kartica">
+    <form class="filter-forma" method="get" action="/prikaz/izvestaj-liga">
+        <label>
+            Liga ID
+            <input type="number" name="liga_id" value="{{ liga_id or '' }}" required min="1">
+        </label>
+        <label>
+            Sezona ID
+            <input type="number" name="sezona_id" value="{{ sezona_id or '' }}" required min="1">
+        </label>
+        <label>
+            Kolo od <span style="opacity:0.6">(prazno = sva kola)</span>
+            <input type="number" name="kolo_od" value="{{ kolo_od or '' }}" min="1">
+        </label>
+        <label>
+            Kolo do <span style="opacity:0.6">(prazno = sva kola)</span>
+            <input type="number" name="kolo_do" value="{{ kolo_do or '' }}" min="1">
+        </label>
+        <button type="submit">Prikazi</button>
+    </form>
+
+    {% if greska %}
+        <div class="greska">{{ greska }}</div>
+    {% endif %}
+
+    {% if statistika %}
+        <p style="color: var(--tekst-prigusen); margin-bottom: 20px;">
+            Ukupno meceva u izabranom opsegu:
+            <span class="zvezdica">{{ statistika.ukupno_meceva }}</span>
+        </p>
+
+        {#
+            Svaka "sekcija" je jedna mini-tabela: zaglavlje sa
+            labelama kolona, i JEDAN red sa brojevima ispod. sekcije
+            je lista Python torki (naziv, [(labela, kljuc), ...]) -
+            definisemo je u main.py i prosledjujemo ovde, umesto da
+            hardkodujemo 20+ polja rucno u HTML-u.
+        #}
+        {% for naslov_sekcije, stavke in sekcije %}
+        <div style="margin-bottom: 22px;">
+            <h3 style="font-size: 0.8rem; color: var(--tekst-prigusen); font-family: 'IBM Plex Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">
+                {{ naslov_sekcije }}
+            </h3>
+            <table style="width: auto;">
+                <thead>
+                    <tr>
+                        {% for labela, kljuc in stavke %}
+                        <th>{{ labela }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        {% for labela, kljuc in stavke %}
+                        <td class="brojevi zvezdica">{{ statistika[kljuc] }}</td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% elif liga_id %}
+        <p class="prazno-polje">Nema podataka za izabrani filter.</p>
+    {% endif %}
+</div>
+{% endblock %}

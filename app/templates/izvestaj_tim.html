@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block naslov %}Izvestaj tima - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Izvestaj tima</h2>
+
+<div class="kartica sirok-omotac">
+    <form class="filter-forma" method="get" action="/prikaz/izvestaj-tim">
+        <label>
+            Tim ID
+            <input type="number" name="tim_id" value="{{ tim_id or '' }}" required min="1">
+        </label>
+        <label>
+            Sezona ID
+            <input type="number" name="sezona_id" value="{{ sezona_id or '' }}" required min="1">
+        </label>
+        <button type="submit">Prikazi</button>
+    </form>
+
+    {% if greska %}
+        <div class="greska">{{ greska }}</div>
+    {% endif %}
+
+    {% if mecevi %}
+    <table class="tabela-kompaktna">
+            <thead>
+                <tr>
+                    <th rowspan="2">Kolo</th>
+                    <th rowspan="2">Domacin</th>
+                    <th rowspan="2">Gost</th>
+                    <th rowspan="2">Poluvreme</th>
+                    <th rowspan="2">Kraj</th>
+                    {% for naslov_sekcije, stavke in sekcije %}
+                    <th colspan="{{ stavke|length }}" style="text-align:center; border-left: 1px solid var(--linija);">
+                        {{ naslov_sekcije }}
+                    </th>
+                    {% endfor %}
+                    <th rowspan="2" style="border-left: 1px solid var(--linija);">BB</th>
+                    <th rowspan="2">GR</th>
+                </tr>
+                <tr>
+                    {% for naslov_sekcije, stavke in sekcije %}
+                        {% for labela, kljuc in stavke %}
+                        <th style="text-align:center;{% if loop.first %} border-left: 1px solid var(--linija);{% endif %}">
+                            {{ labela }}
+                        </th>
+                        {% endfor %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for red in mecevi %}
+                <tr>
+                    <td>{{ red.kolo }}</td>
+                    <td>{{ red.domacin }}</td>
+                    <td>{{ red.gost }}</td>
+                    <td class="brojevi">{{ red.poluvreme }}</td>
+                    <td class="brojevi">{{ red.kraj }}</td>
+                    {% for naslov_sekcije, stavke in sekcije %}
+                        {% for labela, kljuc in stavke %}
+                        <td style="text-align:center;{% if loop.first %} border-left: 1px solid var(--linija);{% endif %}"
+                            class="{{ 'zvezdica' if red[kljuc] else 'prazno-polje' }}">
+                            {{ '\u2605' if red[kljuc] else '\u2013' }}
+                        </td>
+                        {% endfor %}
+                    {% endfor %}
+                    <td class="brojevi zvezdica" style="border-left: 1px solid var(--linija);">{{ red.BB }}</td>
+                    <td class="brojevi">{{ red.GR }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif tim_id %}
+        <p class="prazno-polje">Nema odigranih meceva za izabrani tim/sezonu.</p>
+    {% endif %}
+</div>
+{% endblock %}

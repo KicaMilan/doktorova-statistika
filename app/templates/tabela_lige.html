@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block naslov %}Tabela lige - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Tabela lige</h2>
+
+<div class="kartica">
+    <!--
+        Ova forma salje GET zahtev nazad na ISTU stranicu, sa
+        liga_id/sezona_id kao query parametrima (npr.
+        ?liga_id=1&sezona_id=1). To znaci da FastAPI funkcija za ovu
+        rutu prima iste te parametre i ponovo generise stranicu,
+        ovog puta sa popunjenom tabelom.
+
+        Za sada su ovo obicna brojevna polja (ID direktno) - kad
+        napravimo /lige i /sezone lookup endpoint-e, ovo pretvaramo
+        u dropdown liste sa nazivima umesto brojeva.
+    -->
+    <form class="filter-forma" method="get" action="/prikaz/tabela-lige">
+        <label>
+            Liga ID
+            <input type="number" name="liga_id" value="{{ liga_id or '' }}" required min="1">
+        </label>
+        <label>
+            Sezona ID
+            <input type="number" name="sezona_id" value="{{ sezona_id or '' }}" required min="1">
+        </label>
+        <button type="submit">Prikazi</button>
+    </form>
+
+    {% if greska %}
+        <div class="greska">{{ greska }}</div>
+    {% endif %}
+
+    {% if tabela %}
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tim</th>
+                    <th>Odigrano</th>
+                    <th>Pob</th>
+                    <th>Ner</th>
+                    <th>Por</th>
+                    <th>Dati</th>
+                    <th>Prim</th>
+                    <th>GR</th>
+                    <th>Bod</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for red in tabela %}
+                <tr>
+                    <td>{{ red.pozicija }}</td>
+                    <td>{{ red.tim }}</td>
+                    <td>{{ red.odigrano }}</td>
+                    <td>{{ red.pobede }}</td>
+                    <td>{{ red.neresene }}</td>
+                    <td>{{ red.porazi }}</td>
+                    <td>{{ red.dati }}</td>
+                    <td>{{ red.primljeni }}</td>
+                    <td>{{ red.gol_razlika }}</td>
+                    <td class="zvezdica">{{ red.bodovi }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif liga_id %}
+        <p class="prazno-polje">Nema podataka za izabranu ligu/sezonu.</p>
+    {% endif %}
+</div>
+{% endblock %}

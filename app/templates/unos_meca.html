@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block naslov %}Unos meca - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Unos meca</h2>
+
+{% if poruka_uspeh %}
+    <div class="poruka-uspeh">{{ poruka_uspeh }}</div>
+{% endif %}
+{% if greska %}
+    <div class="greska">{{ greska }}</div>
+{% endif %}
+
+<!-- KORAK 1: izbor lige i sezone. GET forma - ne menja nista u bazi,
+     samo ponovo ucitava ovu istu stranicu sa liga_id/sezona_id kao
+     query parametrima, sto nasoj FastAPI ruti govori da ucita
+     timove prijavljene u tu ligu/sezonu za korak 2. -->
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">1. Izaberi ligu i sezonu</h3>
+    <form class="filter-forma" method="get" action="/prikaz/unos-meca">
+        <label>
+            Liga
+            <select name="liga_id" required>
+                <option value="">-- izaberi --</option>
+                {% for liga in lige %}
+                <option value="{{ liga.id }}" {% if liga_id == liga.id %}selected{% endif %}>
+                    {{ liga.naziv }}{% if liga.drzava %} ({{ liga.drzava }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Sezona
+            <select name="sezona_id" required>
+                <option value="">-- izaberi --</option>
+                {% for sezona in sezone %}
+                <option value="{{ sezona.id }}" {% if sezona_id == sezona.id %}selected{% endif %}>
+                    {{ sezona.naziv }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Nastavi</button>
+    </form>
+</div>
+
+<!-- KORAK 2: prikazuje se tek kad su liga_id i sezona_id izabrani.
+     Ako ta liga/sezona jos nema prijavljenih timova (tim_liga_sezona
+     tabela prazna za tu kombinaciju), obavestavamo korisnika umesto
+     da prikazemo praznu, beskorisnu formu. -->
+{% if liga_id and sezona_id %}
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">2. Unesi rezultat meca</h3>
+
+    {% if not timovi %}
+        <p class="prazno-polje">
+            Nijedan tim jos nije prijavljen u ovu ligu/sezonu (tabela
+            tim_liga_sezona je prazna za ovu kombinaciju) - dodaj timove
+            preko baze pre unosa meca.
+        </p>
+    {% else %}
+    <form method="post" action="/prikaz/unos-meca">
+        <!-- hidden polja "nose" izbor iz koraka 1 kroz POST zahtev -
+             korisnik ih ne vidi, ali se salju zajedno sa ostatkom forme -->
+        <input type="hidden" name="liga_id" value="{{ liga_id }}">
+        <input type="hidden" name="sezona_id" value="{{ sezona_id }}">
+
+        <div class="filter-forma" style="margin-bottom: 16px;">
+            <label>
+                Domacin
+                <select name="domacin_id" required>
+                    <option value="">-- izaberi --</option>
+                    {% for tim in timovi %}
+                    <option value="{{ tim.id }}">{{ tim.naziv }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Gost
+                <select name="gost_id" required>
+                    <option value="">-- izaberi --</option>
+                    {% for tim in timovi %}
+                    <option value="{{ tim.id }}">{{ tim.naziv }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Kolo
+                <input type="number" name="kolo" min="1" required>
+            </label>
+            <label>
+                Datum <span style="opacity:0.6">(opciono)</span>
+                <input type="date" name="datum">
+            </label>
+        </div>
+
+        <div class="filter-forma" style="margin-bottom: 16px;">
+            <label>
+                Poluvreme - domacin
+                <input type="number" name="ht_domacin_golovi" min="0" value="0" required>
+            </label>
+            <label>
+                Poluvreme - gost
+                <input type="number" name="ht_gost_golovi" min="0" value="0" required>
+            </label>
+            <label>
+                Kraj - domacin
+                <input type="number" name="ft_domacin_golovi" min="0" value="0" required>
+            </label>
+            <label>
+                Kraj - gost
+                <input type="number" name="ft_gost_golovi" min="0" value="0" required>
+            </label>
+        </div>
+
+        <button type="submit">Unesi mec</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if poslednji_mecevi %}
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Poslednje uneti mecevi (ova liga/sezona)</h3>
+    <table style="width: auto;">
+        <thead>
+            <tr>
+                <th>Kolo</th>
+                <th>Domacin</th>
+                <th>Gost</th>
+                <th>Rezultat</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for red in poslednji_mecevi %}
+            <tr>
+                <td>{{ red.kolo }}</td>
+                <td>{{ red.domacin }}</td>
+                <td>{{ red.gost }}</td>
+                <td class="brojevi">{{ red.ft_domacin_golovi }}:{{ red.ft_gost_golovi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

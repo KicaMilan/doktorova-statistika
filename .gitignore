@@ -1,0 +1,32 @@
+# .gitignore
+#
+# Fajlovi/folderi navedeni ovde se NIKAD ne "commit-uju" u Git -
+# ostaju samo lokalno na masini. Dva glavna razloga da nesto bude
+# ovde: (1) sadrzi osetljive podatke (lozinke), ili (2) moze
+# automatski da se regenerise (venv, __pycache__) pa nema smisla
+# cuvati ga u istoriji - samo "zauzima mesto" i pravi nepotrebne
+# razlike (diff) izmedju verzija.
+
+# Virtuelno okruzenje - svako ko klonira repo pravi svoje SVOJE (
+# python3 -m venv .venv), ne treba da bude u Git-u (ionako je vezano
+# za operativni sistem na kom je napravljeno)
+.venv/
+
+# Stvarne lozinke/konekcioni podaci - OVO JE NAJVAZNIJA LINIJA U
+# CELOM FAJLU. .env.example (sablon bez pravih lozinki) OSTAJE u
+# Git-u, ali .env (sa stvarnom lozinkom baze) NIKAD ne sme na GitHub.
+.env
+
+# Python "kesira" kompajlirani bajtkod ovde - generise se automatski
+# pri svakom pokretanju, ne treba da bude u repozitorijumu
+__pycache__/
+*.pyc
+
+# Ako ikad koristis VS Code ili slican editor na serveru, ovo su
+# njegovi lokalni podesavanje folderi - licni za svakog developera
+.vscode/
+.idea/
+
+# OS-specificni fajlovi (ako ikad radis i sa Mac/Windows masine)
+.DS_Store
+Thumbs.db

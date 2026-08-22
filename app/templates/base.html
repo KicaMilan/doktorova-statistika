@@ -1,0 +1,351 @@
+<!--
+    app/templates/base.html
+
+    Ovo je "osnovni" sablon - sadrzi zajednicke delove svake stranice
+    (navigaciju, CSS stil, <head> deo). Ostali sabloni (index.html,
+    tabela_lige.html...) ga "produzavaju" (extends) i popunjavaju samo
+    svoj deo sadrzaja - ne moramo da ponavljamo navigaciju i stil u
+    svakom fajlu posebno.
+
+    {% raw %}
+    Objasnjenje Jinja2 sintakse koja se koristi u ovim sablonima:
+      dvostruke vitiaste zagrade  -> ubacuju VREDNOST promenljive (npr. ime tima)
+      procenat-zagrade blok       -> logika sablona (petlje, uslovi, nasledjivanje)
+    {% endraw %}
+-->
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block naslov %}doktorova statistika{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* --- Token sistem boja --- */
+            /* Tamna pozadina - "noc, teren pod reflektorima" */
+            --bg: #14181a;
+            --bg-povrsina: #1c2220;
+            --bg-povrsina-svetlija: #232a27;
+            --linija: #34403a;
+
+            /* Zelena terena - primarni akcenat */
+            --zelena: #3b7a57;
+            --zelena-svetla: #5aa377;
+
+            /* Zlatna - "zvezdice", istaknute vrednosti, tribut */
+            --zlatna: #c9a227;
+            --zlatna-svetla: #e0bc4a;
+
+            /* Tekst */
+            --tekst: #ededE6;
+            --tekst-prigusen: #9ba39c;
+
+            /* Crvena/roze - porazi, greske */
+            --crvena: #b8544a;
+
+            --radijus: 6px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--tekst);
+            font-family: "IBM Plex Sans", sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        h1, h2, h3 {
+            font-family: "Fraunces", serif;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            margin: 0 0 0.5em 0;
+        }
+
+        .brojevi, table, td, th, input[type="number"] {
+            font-family: "IBM Plex Mono", monospace;
+        }
+
+        a { color: var(--zelena-svetla); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+            outline: 2px solid var(--zlatna);
+            outline-offset: 2px;
+        }
+
+        header.sajt-header {
+            border-bottom: 1px solid var(--linija);
+            padding: 20px 32px;
+            display: flex;
+            align-items: baseline;
+            gap: 28px;
+            flex-wrap: wrap;
+        }
+
+        header.sajt-header .zvezda {
+            color: var(--zlatna);
+        }
+
+        header.sajt-header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        nav.glavna-nav {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        nav.glavna-nav a {
+            color: var(--tekst-prigusen);
+            font-size: 0.92rem;
+            padding-bottom: 2px;
+            border-bottom: 2px solid transparent;
+        }
+
+        nav.glavna-nav a:hover,
+        nav.glavna-nav a.aktivno {
+            color: var(--tekst);
+            text-decoration: none;
+            border-bottom-color: var(--zlatna);
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .kartica {
+            background: var(--bg-povrsina);
+            border: 1px solid var(--linija);
+            border-radius: var(--radijus);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--linija);
+            white-space: nowrap;
+        }
+
+        th {
+            color: var(--tekst-prigusen);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+        }
+
+        tr:hover td { background: var(--bg-povrsina-svetlija); }
+
+        .zvezdica {
+            color: var(--zlatna);
+            font-weight: 600;
+        }
+
+        .prazno-polje { color: var(--linija); }
+
+        form.filter-forma {
+            display: flex;
+            gap: 14px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        form.filter-forma label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.8rem;
+            color: var(--tekst-prigusen);
+        }
+
+        input, select {
+            background: var(--bg);
+            border: 1px solid var(--linija);
+            color: var(--tekst);
+            border-radius: var(--radijus);
+            padding: 8px 10px;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: var(--zelena);
+            color: white;
+            border: none;
+            border-radius: var(--radijus);
+            padding: 9px 18px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        button:hover { background: var(--zelena-svetla); }
+
+        .greska {
+            background: rgba(184, 84, 74, 0.15);
+            border: 1px solid var(--crvena);
+            color: #e8a49d;
+            padding: 12px 16px;
+            border-radius: var(--radijus);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* Omotac koji "probija" centrirani <main> okvir (max-width:
+           1100px) i sire se preko cele sirine prozora - koristimo ga
+           za sirok e tabele (izvestaj tima) koje imaju previse kolona
+           da bi stale u standardnu sirinu. 100vw = sirina celog
+           prozora; levi pomeraj od -50vw centrira taj puni-sirinski
+           blok nazad ispod tacke gde je <main> pocinjao. */
+        .sirok-omotac {
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            margin-left: -50vw;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        /* Manji font i tesnji razmaci - koristimo na tabelama sa
+           puno kolona (30+), da vise stane bez horizontalnog skrola */
+        .tabela-kompaktna th,
+        .tabela-kompaktna td {
+            padding: 5px 6px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
+
+        .poruka-uspeh {
+            background: rgba(90, 163, 119, 0.15);
+            border: 1px solid var(--zelena-svetla);
+            color: var(--zelena-svetla);
+            padding: 12px 16px;
+            border-radius: var(--radijus);
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* --- Modal popup (potvrda/greska nakon unosa) ---
+           <dialog> je ugradjen HTML element - browser sam iscrtava
+           centriranje na sredini ekrana i providnu pozadinu (backdrop)
+           iza njega, kad se otvori metodom .showModal() u JS-u ispod.
+           Mi samo stilizujemo njegov IZGLED da odgovara ostatku sajta. */
+        dialog.modal-poruka {
+            background: var(--bg-povrsina);
+            color: var(--tekst);
+            border: 1px solid var(--linija);
+            border-radius: var(--radijus);
+            padding: 26px 30px;
+            max-width: 420px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+        }
+
+        dialog.modal-poruka.modal-greska { border-color: var(--crvena); }
+        dialog.modal-poruka.modal-uspeh { border-color: var(--zelena-svetla); }
+
+        /* ::backdrop je poseban "pseudo-element" koji <dialog> sam
+           kreira iza sebe kad je otvoren metodom showModal() - ovo
+           stilizuje TU pozadinu (zatamnjenje ostatka ekrana) */
+        dialog.modal-poruka::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        dialog.modal-poruka p {
+            margin: 0 0 18px 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        dialog.modal-poruka .modal-naslov {
+            font-family: "Fraunces", serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        dialog.modal-poruka.modal-greska .modal-naslov { color: #e8a49d; }
+        dialog.modal-poruka.modal-uspeh .modal-naslov { color: var(--zelena-svetla); }
+    </style>
+</head>
+<body>
+    <header class="sajt-header">
+        <h1><span class="zvezda">&#9733;</span> doktorova statistika</h1>
+        <nav class="glavna-nav">
+            <a href="/">Pocetna</a>
+            <a href="/prikaz/tabela-lige">Tabela lige</a>
+            <a href="/prikaz/izvestaj-liga">Izvestaj lige</a>
+            <a href="/prikaz/izvestaj-tim">Izvestaj tima</a>
+            <a href="/prikaz/unos-meca">Unos meca</a>
+            <a href="/prikaz/admin">Admin</a>
+        </nav>
+    </header>
+
+    {#
+        Jinja2 "|default(none)" ovde znaci: ako promenljiva NIJE
+        prosledjena iz main.py (npr. stranica koja uopste nema
+        poruke), tretiraj je kao "nema nista" umesto da baci gresku.
+        set kombinuje poruka_uspeh i poruka u JEDNU promenljivu
+        (razlicite stranice koriste razlicita imena za "uspesna
+        poruka" polje - ovde ih spajamo na jednom mestu).
+    #}
+    {% set prikazana_poruka = (poruka_uspeh|default(none)) or (poruka|default(none)) %}
+    {% set prikazana_greska = greska|default(none) %}
+
+    {% if prikazana_poruka or prikazana_greska %}
+    <dialog id="modal-poruka" class="modal-poruka {{ 'modal-greska' if prikazana_greska else 'modal-uspeh' }}">
+        <div class="modal-naslov">
+            {% if prikazana_greska %}&#9888; Greska{% else %}&#10003; Uspesno{% endif %}
+        </div>
+        <p>{{ prikazana_greska or prikazana_poruka }}</p>
+        <button onclick="document.getElementById('modal-poruka').close()">OK</button>
+    </dialog>
+    <script>
+        // Ovo je jedini JS u celoj aplikaciji - otvara modal cim se
+        // stranica ucita. addEventListener('DOMContentLoaded', ...)
+        // znaci "cekaj da ceo HTML bude spreman pre nego sto pokusas
+        // da nadjes #modal-poruka element" - bez ovoga, skripta bi
+        // se mozda izvrsila PRE nego sto <dialog> element uopste
+        // postoji na stranici.
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('modal-poruka').showModal();
+
+            // PROBLEM koji ovo resava: posle redirekcije, URL u
+            // adresnoj traci ostaje npr. "/prikaz/admin?poruka=Liga+
+            // dodata...#sekcija-liga". Ako korisnik pritisne F5, browser
+            // ponovo ucitava TAJ ISTI URL - server opet vidi poruku u
+            // query stringu i opet prikazuje isti modal, iznova i iznova.
+            //
+            // history.replaceState(...) menja URL u adresnoj traci BEZ
+            // ponovnog ucitavanja stranice (za razliku od
+            // window.location = ...) - brise ?poruka=.../?greska=... iz
+            // URL-a, ali zadrzava #sidro (deo posle #) da pozicija
+            // skrolovanja ostane ista. Posle ovoga, F5 ucitava CIST URL
+            // (bez poruke), pa se modal vise ne pojavljuje ponovo.
+            const cist_url = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, document.title, cist_url);
+        });
+    </script>
+    {% endif %}
+
+    <main>
+        {% block sadrzaj %}{% endblock %}
+    </main>
+</body>
+</html>
