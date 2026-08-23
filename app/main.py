@@ -352,6 +352,7 @@ def izvestaj_za_tim(tim_id: int, sezona_id: int, conn: DbConnection):
 
 UPIT_IZVESTAJ_LIGA = """
 SELECT
+    kolo,
     COUNT(*) AS ukupno_meceva,
     COUNT(*) FILTER (WHERE ft_domacin_golovi > ft_gost_golovi) AS "1",
     COUNT(*) FILTER (WHERE ft_domacin_golovi = ft_gost_golovi) AS "X",
@@ -385,12 +386,9 @@ SELECT
 FROM public.mec
 WHERE liga_id = %(liga_id)s
   AND sezona_id = %(sezona_id)s
-  -- COALESCE(%(kolo_od)s, kolo) znaci: "ako kolo_od NIJE poslat
-  -- (NULL), koristi vrednost same kolone 'kolo' kao donju granicu"
-  -- - sto je uvek tacno (kolo >= kolo), pa filter efektivno "nestaje"
-  -- i ne ogranicava nista. Ovaj trik nam omogucava da kolo_od/kolo_do
-  -- budu OPCIONI, bez potrebe da pisemo dve razlicite verzije upita.
-  AND kolo BETWEEN COALESCE(%(kolo_od)s, kolo) AND COALESCE(%(kolo_do)s, kolo);
+  AND kolo BETWEEN COALESCE(%(kolo_od)s, kolo) AND COALESCE(%(kolo_do)s, kolo)
+GROUP BY kolo
+ORDER BY kolo;
 """
 
 
@@ -590,7 +588,7 @@ def prikaz_izvestaja_lige(
 ):
     """HTML stranica za sumarni izvestaj lige - isti princip kao
     tabela lige (forma pa uslovno ucitavanje)."""
-    statistika = None
+    redovi = None
     greska = None
 
     # int(x) if x else None -> ako je x prazan string (ili None),
@@ -607,7 +605,10 @@ def prikaz_izvestaja_lige(
                     "kolo_od": kolo_od_broj,
                     "kolo_do": kolo_do_broj,
                 })
-                statistika = cur.fetchone()
+                # fetchall() umesto fetchone(): upit sad vraca VISE
+                # redova (jedan po kolu, zbog GROUP BY kolo u SQL-u),
+                # ne vise samo jedan zbirni red.
+                redovi = cur.fetchall()
         except Exception as e:
             greska = f"Greska pri ucitavanju izvestaja: {e}"
 
@@ -617,7 +618,7 @@ def prikaz_izvestaja_lige(
         "sezona_id": sezona_id,
         "kolo_od": kolo_od_broj,
         "kolo_do": kolo_do_broj,
-        "statistika": statistika,
+        "redovi": redovi,
         "sekcije": SEKCIJE_IZVESTAJ_LIGA,
         "greska": greska,
     })

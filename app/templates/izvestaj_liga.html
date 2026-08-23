@@ -5,7 +5,7 @@
 {% block sadrzaj %}
 <h2>Izvestaj lige</h2>
 
-<div class="kartica">
+<div class="kartica{{ ' sirok-omotac' if redovi else '' }}">
     <form class="filter-forma" method="get" action="/prikaz/izvestaj-liga">
         <label>
             Liga ID
@@ -26,48 +26,49 @@
         <button type="submit">Prikazi</button>
     </form>
 
-    {% if greska %}
-        <div class="greska">{{ greska }}</div>
-    {% endif %}
-
-    {% if statistika %}
-        <p style="color: var(--tekst-prigusen); margin-bottom: 20px;">
-            Ukupno meceva u izabranom opsegu:
-            <span class="zvezdica">{{ statistika.ukupno_meceva }}</span>
-        </p>
-
-        {#
-            Svaka "sekcija" je jedna mini-tabela: zaglavlje sa
-            labelama kolona, i JEDAN red sa brojevima ispod. sekcije
-            je lista Python torki (naziv, [(labela, kljuc), ...]) -
-            definisemo je u main.py i prosledjujemo ovde, umesto da
-            hardkodujemo 20+ polja rucno u HTML-u.
-        #}
-        {% for naslov_sekcije, stavke in sekcije %}
-        <div style="margin-bottom: 22px;">
-            <h3 style="font-size: 0.8rem; color: var(--tekst-prigusen); font-family: 'IBM Plex Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;">
-                {{ naslov_sekcije }}
-            </h3>
-            <table style="width: auto;">
-                <thead>
-                    <tr>
-                        {% for labela, kljuc in stavke %}
-                        <th>{{ labela }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        {% for labela, kljuc in stavke %}
-                        <td class="brojevi zvezdica">{{ statistika[kljuc] }}</td>
-                        {% endfor %}
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        {% endfor %}
+    {% if redovi %}
+    <!-- Isti princip kao izvestaj_tim.html: dvoredno zaglavlje
+         (grupni naslov + pojedinacne oznake), jedan red PO KOLU. -->
+    <table class="tabela-kompaktna">
+        <thead>
+            <tr>
+                <th rowspan="2">Kolo</th>
+                <th rowspan="2">Ukupno</th>
+                {% for naslov_sekcije, stavke in sekcije %}
+                <th colspan="{{ stavke|length }}" style="text-align:center; border-left: 1px solid var(--linija);">
+                    {{ naslov_sekcije }}
+                </th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for naslov_sekcije, stavke in sekcije %}
+                    {% for labela, kljuc in stavke %}
+                    <th style="text-align:center;{% if loop.first %} border-left: 1px solid var(--linija);{% endif %}">
+                        {{ labela }}
+                    </th>
+                    {% endfor %}
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for red in redovi %}
+            <tr>
+                <td>{{ red.kolo }}</td>
+                <td class="brojevi zvezdica">{{ red.ukupno_meceva }}</td>
+                {% for naslov_sekcije, stavke in sekcije %}
+                    {% for labela, kljuc in stavke %}
+                    <td class="brojevi" style="text-align:center;{% if loop.first %} border-left: 1px solid var(--linija);{% endif %}">
+                        {{ red[kljuc] }}
+                    </td>
+                    {% endfor %}
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% elif liga_id %}
         <p class="prazno-polje">Nema podataka za izabrani filter.</p>
     {% endif %}
 </div>
 {% endblock %}
+
