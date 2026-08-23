@@ -8,8 +8,15 @@
 <div class="kartica sirok-omotac">
     <form class="filter-forma" method="get" action="/prikaz/izvestaj-tim">
         <label>
-            Tim ID
-            <input type="number" name="tim_id" value="{{ tim_id or '' }}" required min="1">
+            Tim
+            <select name="tim_id" required>
+                <option value="">-- izaberi --</option>
+                {% for tim in svi_timovi %}
+                <option value="{{ tim.id }}" {% if tim_id == tim.id %}selected{% endif %}>
+                    {{ tim.naziv }}
+                </option>
+                {% endfor %}
+            </select>
         </label>
         <label>
             Sezona ID
@@ -17,10 +24,6 @@
         </label>
         <button type="submit">Prikazi</button>
     </form>
-
-    {% if greska %}
-        <div class="greska">{{ greska }}</div>
-    {% endif %}
 
     {% if mecevi %}
     <table class="tabela-kompaktna">
@@ -76,3 +79,4 @@
     {% endif %}
 </div>
 {% endblock %}
+

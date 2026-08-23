@@ -655,6 +655,13 @@ def prikaz_izvestaja_tima(
     mecevi = None
     greska = None
 
+    # Ucitavamo SVE timove (za dropdown listu u formi) - koristimo
+    # isti upit (UPIT_SVI_TIMOVI) koji vec koristi admin stranica, da
+    # ne pisemo identican SQL na dva mesta.
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(UPIT_SVI_TIMOVI)
+        svi_timovi = cur.fetchall()
+
     if tim_id is not None and sezona_id is not None:
         try:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -668,6 +675,7 @@ def prikaz_izvestaja_tima(
         "tim_id": tim_id,
         "sezona_id": sezona_id,
         "mecevi": mecevi,
+        "svi_timovi": svi_timovi,
         "sekcije": SEKCIJE_IZVESTAJ_TIM,
         "greska": greska,
     })
