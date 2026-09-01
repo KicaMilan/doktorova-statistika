@@ -7,8 +7,11 @@
 
 from typing import Annotated
 from urllib.parse import quote
+import csv
+import io
+from datetime import datetime
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from fastapi import FastAPI, Depends, HTTPException, Request, Form, UploadFile, File
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from psycopg import Connection
@@ -993,3 +996,186 @@ def dodaj_vezu(
     except (UniqueViolation, CheckViolation, ForeignKeyViolation, RaiseException) as e:
         conn.rollback()
         return RedirectResponse(f"/prikaz/admin?greska={quote(str(e))}#sekcija-veza", status_code=303)
+# =====================================================================
+# Masovni uvoz meceva iz CSV fajla
+# =====================================================================
+# Ocekivane kolone u CSV fajlu (prvi red = zaglavlje):
+#   Kolo, Datum, Domacin, Gost, Poluvreme, Kraj
+# Datum u formatu DD.MM.GGGG (npr. 01.09.2026)
+# Poluvreme/Kraj u formatu "H:G" (npr. "1:0")
+# Domacin/Gost - IMENA timova, moraju TACNO (bez obzira na velika/mala
+# slova) da odgovaraju timovima vec povezanim sa izabranom ligom/sezonom.
+
+
+def ucitaj_timove_po_imenu(conn: Connection, liga_id: int, sezona_id: int) -> dict[str, int]:
+    """
+    Vraca RECNIK gde je kljuc naziv tima (malim slovima, za
+    poredjenje bez obzira na velika/mala slova), a vrednost je
+    njegov tim_id. Koristimo je da brzo "prevedemo" ime tima iz CSV
+    reda u ID koji baza ocekuje - bez ovoga, morali bismo da radimo
+    SQL upit za SVAKI red CSV fajla posebno (sporo za stotine redova).
+    """
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(UPIT_TIMOVI_U_LIGI, {"liga_id": liga_id, "sezona_id": sezona_id})
+        timovi = cur.fetchall()
+    return {tim["naziv"].lower(): tim["id"] for tim in timovi}
+
+
+@app.get("/prikaz/uvoz-meceva")
+def prikaz_uvoza(
+    request: Request,
+    conn: DbConnection,
+    liga_id: int | None = None,
+    sezona_id: int | None = None,
+):
+    """Prikazuje formu za uvoz - prvo izbor lige/sezone (isti obrazac
+    kao unos_meca.html), pa forma za otpremanje CSV fajla."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(UPIT_LIGE)
+        lige = cur.fetchall()
+        cur.execute(UPIT_SEZONE)
+        sezone = cur.fetchall()
+
+    return templates.TemplateResponse("uvoz_meceva.html", {
+        "request": request,
+        "liga_id": liga_id,
+        "sezona_id": sezona_id,
+        "lige": lige,
+        "sezone": sezone,
+        "rezultat": None,
+        "poruka": None,
+    })
+
+
+@app.post("/prikaz/uvoz-meceva")
+async def obradi_uvoz_meceva(
+    request: Request,
+    conn: DbConnection,
+    liga_id: Annotated[int, Form()],
+    sezona_id: Annotated[int, Form()],
+    # UploadFile - FastAPI-jev nacin da primi otpremljen fajl. Za
+    # razliku od Form() polja (koja su tekst), UploadFile daje
+    # pristup sirovim bajtovima fajla i njegovom originalnom imenu.
+    fajl: Annotated[UploadFile, File()],
+):
+    """Obradjuje otpremljeni CSV fajl - red po red, sa jasnim
+    razlogom preskakanja za svaki red koji ne uspe da se unese."""
+
+    # await fajl.read() -> cita CEO sadrzaj otpremljenog fajla kao
+    # bajtove (await jer je citanje fajla "asinhrona" operacija u
+    # FastAPI-ju - ne blokira ostatak servera dok cita).
+    sirovi_bajtovi = await fajl.read()
+
+    # utf-8-sig umesto obicnog utf-8: Excel pri cuvanju .csv fajlova
+    # cesto na pocetak fajla doda "BOM" (Byte Order Mark) - par
+    # nevidljivih bajtova koji oznacavaju kodiranje. utf-8-sig ih
+    # automatski prepoznaje i uklanja; obican utf-8 bi ih ostavio kao
+    # "smece" na pocetku prve kolone i pokvario prepoznavanje zaglavlja.
+    tekst = sirovi_bajtovi.decode("utf-8-sig")
+
+    # Excel u zavisnosti od regionalnih podesavanja koristi zarez (,)
+    # ili tacku-zarez (;) kao razdvajac kolona pri cuvanju .csv fajla.
+    # Umesto da nagadjamo, brojimo koji znak se cesce pojavljuje u
+    # prvom redu (zaglavlju) i koristimo taj kao razdvajac.
+    prvi_red = tekst.splitlines()[0] if tekst.splitlines() else ""
+    razdvajac = ";" if prvi_red.count(";") > prvi_red.count(",") else ","
+
+    citac = csv.DictReader(io.StringIO(tekst), delimiter=razdvajac)
+
+    # Recnik imena timova -> ID, ucitan JEDNOM pre petlje (ne za
+    # svaki red iznova - vidi objasnjenje u ucitaj_timove_po_imenu).
+    timovi_po_imenu = ucitaj_timove_po_imenu(conn, liga_id, sezona_id)
+
+    broj_uspesnih = 0
+    preskoceni = []
+
+    # enumerate(citac, start=2) -> brojimo redove POCEV OD 2, jer je
+    # red 1 zaglavlje (Kolo,Datum,Domacin,Gost,...) - ovo nam daje
+    # tacan broj reda IZ ORIGINALNOG FAJLA za prijavljivanje gresaka,
+    # da korisnik lako nadje koji red u Excelu treba da ispravi.
+    for broj_reda, red in enumerate(citac, start=2):
+        opis_reda = f"{red.get('Kolo', '?')}. kolo: {red.get('Domacin', '?')} - {red.get('Gost', '?')}"
+
+        try:
+            kolo = int(red["Kolo"].strip())
+            datum_tekst = (red.get("Datum") or "").strip()
+            # strptime pretvara TEKST u datum, prema zadatom formatu.
+            # %d.%m.%Y znaci "dan.mesec.godina" - tacno format kao u
+            # tvom Excel fajlu (npr. 01.09.2026).
+            datum = datetime.strptime(datum_tekst, "%d.%m.%Y").date() if datum_tekst else None
+
+            domacin_naziv = red["Domacin"].strip()
+            gost_naziv = red["Gost"].strip()
+
+            # .lower() na oba mesta - poredjenje BEZ obzira na velika/
+            # mala slova ("AC Milan" == "ac milan" == "AC MILAN")
+            domacin_id = timovi_po_imenu.get(domacin_naziv.lower())
+            gost_id = timovi_po_imenu.get(gost_naziv.lower())
+
+            if domacin_id is None:
+                preskoceni.append({"red": broj_reda, "sadrzaj": opis_reda,
+                                    "razlog": f"Tim '{domacin_naziv}' nije pronadjen u ovoj ligi/sezoni"})
+                continue
+            if gost_id is None:
+                preskoceni.append({"red": broj_reda, "sadrzaj": opis_reda,
+                                    "razlog": f"Tim '{gost_naziv}' nije pronadjen u ovoj ligi/sezoni"})
+                continue
+
+            # "H:G" -> razdvoji na dva broja preko split(":")
+            ht_domacin, ht_gost = (int(x) for x in red["Poluvreme"].strip().split(":"))
+            ft_domacin, ft_gost = (int(x) for x in red["Kraj"].strip().split(":"))
+
+            podaci = MecCreate(
+                liga_id=liga_id, sezona_id=sezona_id,
+                domacin_id=domacin_id, gost_id=gost_id,
+                kolo=kolo, datum=datum,
+                ht_domacin_golovi=ht_domacin, ht_gost_golovi=ht_gost,
+                ft_domacin_golovi=ft_domacin, ft_gost_golovi=ft_gost,
+            )
+        except (ValueError, KeyError) as e:
+            # ValueError - npr. neispravan format datuma/rezultata;
+            # KeyError - CSV fajlu fali neka od ocekivanih kolona.
+            preskoceni.append({"red": broj_reda, "sadrzaj": opis_reda,
+                                "razlog": f"Neispravan format podataka: {e}"})
+            continue
+        except ValidationError as e:
+            preskoceni.append({"red": broj_reda, "sadrzaj": opis_reda,
+                                "razlog": e.errors()[0]["msg"]})
+            continue
+
+        # Svaki red se upisuje u SVOJOJ "mini-transakciji" - ako OVAJ
+        # red padne (npr. trigger odbije duplikat tima u kolu), samo
+        # NJEGA preskacemo i nastavljamo sa sledecim, ne prekidamo
+        # ceo uvoz. conn.rollback() je OBAVEZAN posle greske - dok
+        # se transakcija ne ponisti, baza odbija SVE dalje komande na
+        # istoj konekciji.
+        try:
+            with conn.cursor() as cur:
+                cur.execute(UPIT_UNESI_MEC, podaci.model_dump())
+            conn.commit()
+            broj_uspesnih += 1
+        except (UniqueViolation, CheckViolation, ForeignKeyViolation, RaiseException) as e:
+            conn.rollback()
+            preskoceni.append({"red": broj_reda, "sadrzaj": opis_reda, "razlog": str(e).split("\n")[0]})
+
+    rezultat = {
+        "ukupno_redova": broj_uspesnih + len(preskoceni),
+        "broj_uspesnih": broj_uspesnih,
+        "preskoceni": preskoceni,
+    }
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(UPIT_LIGE)
+        lige = cur.fetchall()
+        cur.execute(UPIT_SEZONE)
+        sezone = cur.fetchall()
+
+    return templates.TemplateResponse("uvoz_meceva.html", {
+        "request": request,
+        "liga_id": liga_id,
+        "sezona_id": sezona_id,
+        "lige": lige,
+        "sezone": sezone,
+        "rezultat": rezultat,
+        "poruka": f"Uvoz zavrsen: {broj_uspesnih} uneto, {len(preskoceni)} preskoceno (od {rezultat['ukupno_redova']} redova)",
+    })

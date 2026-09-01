@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block naslov %}Uvoz meceva - doktorova statistika{% endblock %}
+
+{% block sadrzaj %}
+<h2>Uvoz meceva (CSV)</h2>
+
+<!-- KORAK 1: izbor lige i sezone - identican obrazac kao unos_meca.html -->
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">1. Izaberi ligu i sezonu</h3>
+    <form class="filter-forma" method="get" action="/prikaz/uvoz-meceva">
+        <label>
+            Liga
+            <select name="liga_id" required>
+                <option value="">-- izaberi --</option>
+                {% for liga in lige %}
+                <option value="{{ liga.id }}" {% if liga_id == liga.id %}selected{% endif %}>
+                    {{ liga.naziv }}{% if liga.drzava %} ({{ liga.drzava }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Sezona
+            <select name="sezona_id" required>
+                <option value="">-- izaberi --</option>
+                {% for sezona in sezone %}
+                <option value="{{ sezona.id }}" {% if sezona_id == sezona.id %}selected{% endif %}>
+                    {{ sezona.naziv }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit">Nastavi</button>
+    </form>
+</div>
+
+<!-- KORAK 2: otpremanje CSV fajla - vidljivo tek kad su liga/sezona izabrani -->
+{% if liga_id and sezona_id %}
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">2. Otpremi CSV fajl</h3>
+
+    <p style="color: var(--tekst-prigusen); font-size: 0.85rem; margin-top: -6px; margin-bottom: 14px;">
+        Ocekivane kolone u prvom redu fajla: <span class="brojevi">Kolo, Datum, Domacin, Gost, Poluvreme, Kraj</span>.
+        Datum u formatu DD.MM.GGGG (npr. 01.09.2026), rezultati u formatu H:G (npr. 1:0).
+        Domacin/Gost moraju odgovarati imenima timova vec povezanih sa ovom ligom/sezonom.
+    </p>
+
+    <!--
+        enctype="multipart/form-data" je OBAVEZAN kad forma salje
+        fajl - obican "application/x-www-form-urlencoded" (podrazu-
+        mevani nacin, koji smo koristili za sve ostale forme do sad)
+        ne moze da nosi binarni sadrzaj fajla.
+    -->
+    <form method="post" action="/prikaz/uvoz-meceva" enctype="multipart/form-data" class="filter-forma">
+        <input type="hidden" name="liga_id" value="{{ liga_id }}">
+        <input type="hidden" name="sezona_id" value="{{ sezona_id }}">
+        <label>
+            CSV fajl
+            <input type="file" name="fajl" accept=".csv" required>
+        </label>
+        <button type="submit">Uvezi</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- KORAK 3: rezultat uvoza - prikazuje se tek nakon obrade fajla -->
+{% if rezultat %}
+<div class="kartica">
+    <h3 style="font-size: 0.95rem; margin-bottom: 14px;">Rezultat uvoza</h3>
+    <p>
+        Uspesno uneto: <span class="zvezdica brojevi">{{ rezultat.broj_uspesnih }}</span>
+        od <span class="brojevi">{{ rezultat.ukupno_redova }}</span> redova.
+    </p>
+
+    {% if rezultat.preskoceni %}
+    <table style="margin-top: 14px;">
+        <thead>
+            <tr>
+                <th>Red u fajlu</th>
+                <th>Sadrzaj</th>
+                <th>Razlog preskakanja</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stavka in rezultat.preskoceni %}
+            <tr>
+                <td>{{ stavka.red }}</td>
+                <td>{{ stavka.sadrzaj }}</td>
+                <td style="color: #e8a49d;">{{ stavka.razlog }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
