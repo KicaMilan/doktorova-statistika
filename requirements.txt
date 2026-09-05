@@ -27,3 +27,5 @@ python-multipart==0.0.17
 # pydantic-settings - cita konfiguraciju (npr. lozinku za bazu) iz
 # .env fajla umesto da je "hardkodujemo" direktno u kodu
 pydantic-settings==2.6.0
+
+requests=2.32.3
