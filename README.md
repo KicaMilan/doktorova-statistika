@@ -4,7 +4,7 @@ Aplikacija za unos i analizu fudbalskih rezultata — lige, sezone,
 timovi, mecevi, i izvestaji (tabela lige, sumarna statistika po kolu,
 detaljan pregled po timu). Licni projekat, ujedno i nacin da se
 digitalizuje i unapredi rucno vodjena statistika koju je moj tast
-godinama beleziyao.
+godinama belezio.
 
 ## Arhitektura
 
